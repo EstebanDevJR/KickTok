@@ -140,7 +140,7 @@ export default function TopBar({
           </button>
 
           <a
-            href="https://github.com"
+            href="https://github.com/EstebanDevJR/KickTok"
             target="_blank"
             rel="noopener noreferrer"
             className="hidden rounded-full border border-white/10 bg-smoke/80 p-2 text-fog/80 backdrop-blur-md transition-colors hover:border-kick/40 hover:text-kick sm:block"
