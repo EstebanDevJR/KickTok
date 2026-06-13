@@ -31,20 +31,24 @@ interface TopBarProps {
   mode: FeedMode;
   time: ClipTime;
   muted: boolean;
+  volume: number;
   scopeLabel?: string;
   onModeChange: (mode: FeedMode) => void;
   onTimeChange: (time: ClipTime) => void;
   onToggleMute: () => void;
+  onVolumeChange: (volume: number) => void;
 }
 
 export default function TopBar({
   mode,
   time,
   muted,
+  volume,
   scopeLabel,
   onModeChange,
   onTimeChange,
   onToggleMute,
+  onVolumeChange,
 }: TopBarProps) {
   // MIX is a global deck; inside a channel/category feed only TOP/NEW apply.
   const tabs = scopeLabel
@@ -127,17 +131,31 @@ export default function TopBar({
             </button>
           )}
 
-          <button
-            onClick={onToggleMute}
-            className="hidden rounded-full border border-white/10 bg-smoke/80 p-2 text-fog/80 backdrop-blur-md transition-colors hover:border-kick/40 hover:text-kick sm:block"
-            aria-label={muted ? "Unmute" : "Mute"}
-          >
-            {muted ? (
-              <VolumeOffIcon width={16} height={16} />
-            ) : (
-              <VolumeOnIcon width={16} height={16} />
-            )}
-          </button>
+          <div className="group hidden items-center sm:flex">
+            <button
+              onClick={onToggleMute}
+              className="rounded-full border border-white/10 bg-smoke/80 p-2 text-fog/80 backdrop-blur-md transition-colors hover:border-kick/40 hover:text-kick"
+              aria-label={muted ? "Unmute" : "Mute"}
+            >
+              {muted ? (
+                <VolumeOffIcon width={16} height={16} />
+              ) : (
+                <VolumeOnIcon width={16} height={16} />
+              )}
+            </button>
+            <div className="max-w-0 overflow-hidden opacity-0 transition-all duration-200 group-hover:max-w-[5rem] group-hover:opacity-100">
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.05"
+                value={muted ? 0 : volume}
+                onChange={(e) => onVolumeChange(parseFloat(e.target.value))}
+                className="ml-1.5 w-16 cursor-pointer accent-kick"
+                aria-label="Volume"
+              />
+            </div>
+          </div>
 
           <a
             href="https://github.com/EstebanDevJR/KickTok"

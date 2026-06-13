@@ -72,7 +72,9 @@ export default function Feed({ initial, initialSeed, scope }: FeedProps) {
   const [mode, setMode] = useState<FeedMode>(defaultMode);
   const [time, setTime] = useState<ClipTime>(defaultTime);
   const [muted, setMuted] = useState(true);
+  const [volume, setVolume] = useState(0.8);
   const [activeIndex, setActiveIndex] = useState(0);
+  const volumeRef = useRef(0.8);
   const [loading, setLoading] = useState(!initial);
   const [error, setError] = useState<string | null>(null);
 
@@ -207,7 +209,15 @@ export default function Feed({ initial, initialSeed, scope }: FeedProps) {
     if (clips.length > 0 && activeIndex >= clips.length - 3) void loadMore();
   }, [activeIndex, clips.length, loadMore]);
 
-  // Keyboard: arrows navigate, M mutes, click on the card toggles playback.
+  const handleVolumeChange = useCallback((v: number) => {
+    const next = Math.max(0, Math.min(1, Math.round(v * 10) / 10));
+    volumeRef.current = next;
+    setVolume(next);
+    if (next > 0) setMuted(false);
+    else setMuted(true);
+  }, []);
+
+  // Keyboard: arrows navigate, M mutes, [ ] adjust volume.
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       const container = containerRef.current;
@@ -223,11 +233,15 @@ export default function Feed({ initial, initialSeed, scope }: FeedProps) {
         });
       } else if (e.key.toLowerCase() === "m") {
         setMuted((m) => !m);
+      } else if (e.key === "[") {
+        handleVolumeChange(volumeRef.current - 0.1);
+      } else if (e.key === "]") {
+        handleVolumeChange(volumeRef.current + 0.1);
       }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  }, [handleVolumeChange]);
 
   function handleModeChange(next: FeedMode) {
     // Re-tapping MIX deals a new shuffle on purpose.
@@ -248,10 +262,12 @@ export default function Feed({ initial, initialSeed, scope }: FeedProps) {
         mode={mode}
         time={time}
         muted={muted}
+        volume={volume}
         scopeLabel={scope?.label}
         onModeChange={handleModeChange}
         onTimeChange={handleTimeChange}
         onToggleMute={() => setMuted((m) => !m)}
+        onVolumeChange={handleVolumeChange}
       />
 
       <div
@@ -266,7 +282,9 @@ export default function Feed({ initial, initialSeed, scope }: FeedProps) {
             active={i === activeIndex}
             preload={Math.abs(i - activeIndex) === 1}
             muted={muted}
+            volume={volume}
             onToggleMute={() => setMuted((m) => !m)}
+            onVolumeChange={handleVolumeChange}
           />
         ))}
 
@@ -310,7 +328,7 @@ export default function Feed({ initial, initialSeed, scope }: FeedProps) {
         data-ui="kbd-hint"
         className="pointer-events-none fixed bottom-2 left-1/2 z-30 hidden -translate-x-1/2 whitespace-nowrap font-mono text-[10px] uppercase tracking-[0.25em] text-fog/30 sm:block"
       >
-        ↑↓ scroll · click pause · double-click like · M mute
+        ↑↓ scroll · click pause · double-click like · M mute · [ ] volume
       </p>
     </main>
   );

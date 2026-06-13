@@ -24,7 +24,9 @@ interface ClipCardProps {
   active: boolean;
   preload: boolean;
   muted: boolean;
+  volume: number;
   onToggleMute: () => void;
+  onVolumeChange: (volume: number) => void;
 }
 
 interface Burst {
@@ -39,7 +41,9 @@ export default function ClipCard({
   active,
   preload,
   muted,
+  volume,
   onToggleMute,
+  onVolumeChange,
 }: ClipCardProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
@@ -122,8 +126,11 @@ export default function ClipCard({
 
   useEffect(() => {
     const video = videoRef.current;
-    if (video) video.muted = muted;
-  }, [muted, shouldLoad]);
+    if (video) {
+      video.muted = muted;
+      video.volume = volume;
+    }
+  }, [muted, volume, shouldLoad]);
 
   useEffect(() => {
     if (!toast) return;
@@ -381,17 +388,33 @@ export default function ClipCard({
           <span className="font-mono text-[11px] text-fog/80">Kick</span>
         </a>
 
-        <button
-          onClick={onToggleMute}
-          className="rounded-full bg-ink/50 p-2.5 text-fog backdrop-blur-sm sm:hidden"
-          aria-label={muted ? "Unmute" : "Mute"}
-        >
-          {muted ? (
-            <VolumeOffIcon width={22} height={22} />
-          ) : (
-            <VolumeOnIcon width={22} height={22} />
-          )}
-        </button>
+        <div className="flex flex-col items-center gap-1 sm:hidden">
+          <button
+            onClick={() => onVolumeChange(Math.min(1, Math.round((volume + 0.1) * 10) / 10))}
+            className="rounded-full bg-ink/50 px-3 py-1.5 font-mono text-base font-bold text-fog backdrop-blur-sm"
+            aria-label="Volume up"
+          >
+            +
+          </button>
+          <button
+            onClick={onToggleMute}
+            className="rounded-full bg-ink/50 p-2.5 text-fog backdrop-blur-sm"
+            aria-label={muted ? "Unmute" : "Mute"}
+          >
+            {muted ? (
+              <VolumeOffIcon width={22} height={22} />
+            ) : (
+              <VolumeOnIcon width={22} height={22} />
+            )}
+          </button>
+          <button
+            onClick={() => onVolumeChange(Math.max(0, Math.round((volume - 0.1) * 10) / 10))}
+            className="rounded-full bg-ink/50 px-3 py-1.5 font-mono text-base font-bold text-fog backdrop-blur-sm"
+            aria-label="Volume down"
+          >
+            −
+          </button>
+        </div>
       </aside>
 
       {toast && (
