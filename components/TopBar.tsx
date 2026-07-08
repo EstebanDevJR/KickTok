@@ -32,11 +32,13 @@ interface TopBarProps {
   time: ClipTime;
   muted: boolean;
   volume: number;
+  hideMature: boolean;
   scopeLabel?: string;
   onModeChange: (mode: FeedMode) => void;
   onTimeChange: (time: ClipTime) => void;
   onToggleMute: () => void;
   onVolumeChange: (volume: number) => void;
+  onToggleMature: () => void;
 }
 
 export default function TopBar({
@@ -44,11 +46,13 @@ export default function TopBar({
   time,
   muted,
   volume,
+  hideMature,
   scopeLabel,
   onModeChange,
   onTimeChange,
   onToggleMute,
   onVolumeChange,
+  onToggleMature,
 }: TopBarProps) {
   // MIX is a global deck; inside a channel/category feed only TOP/NEW apply.
   const tabs = scopeLabel
@@ -130,6 +134,23 @@ export default function TopBar({
               {TIME_OPTIONS.find((t) => t.value === time)?.label}
             </button>
           )}
+
+          <button
+            onClick={onToggleMature}
+            aria-pressed={hideMature}
+            className={`rounded-full border px-2.5 py-1.5 font-mono text-xs font-semibold backdrop-blur-md transition-colors ${
+              hideMature
+                ? "border-white/10 bg-smoke/80 text-fog/40 line-through"
+                : "border-red-500/40 bg-smoke/80 text-red-400 hover:border-red-500/70"
+            }`}
+            title={
+              hideMature
+                ? "18+ clips hidden — tap to show"
+                : "18+ clips shown — tap to hide"
+            }
+          >
+            18+
+          </button>
 
           <div className="group hidden items-center sm:flex">
             <button

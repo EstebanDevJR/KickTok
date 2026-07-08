@@ -11,6 +11,9 @@ Streamers on Kick generate great clips every day, but there's no obvious place t
 - 📱 **Fullscreen vertical feed** — snap scrolling, autoplay, one clip at a time
 - 🎲 **MIX mode (default)** — a shuffled recommendation feed that's different on every refresh
 - 🧠 **Watch history** — MIX remembers what you've seen (locally) and skips it
+- 💚 **Personalized MIX** — your likes and watch history (kept locally) nudge clips from your favorite categories and channels earlier in the deck
+- ⏩ **Seek & auto-advance** — drag the progress bar to scrub, and the feed rolls to the next clip when one ends
+- 🔞 **18+ filter** — one tap in the top bar hides mature-flagged clips
 - 🎯 **Channel & category feeds** — tap a streamer's name/avatar (`/c/[slug]`) or a category chip (`/g/[slug]`) to binge just that
 - 🔥 **Trending filters** — most-viewed clips of the last 24h / 7d / 30d / all time, or newest first
 - ♾️ **Infinite scroll** — cursor-based pagination straight from Kick's clip feed
@@ -29,6 +32,7 @@ Kick's API only offers deterministic sorts (`view`/`date`), so a naive feed show
 2. Each request gets a random **seed**. A seeded PRNG (mulberry32) shuffles every pool deterministically.
 3. The deck is dealt by **weighted round-robin** across pools — 40% today's hits, 25% weekly, 15% monthly, 20% brand-new — with duplicates removed.
 4. Pagination reuses the same seed, so scrolling stays stable within a session; refreshing generates a new seed and a new feed. When the deck runs out, the client reshuffles with a fresh seed and keeps going, skipping clips you've already seen.
+5. If you've liked or watched clips before, the browser sends your top categories and channels (computed locally, never stored server-side) along with the seed, and matching clips are promoted deterministically within the deck.
 
 ## How it reaches Kick
 
@@ -77,11 +81,13 @@ components/
   ClipCard.tsx        # HLS player, action rail, double-tap like, progress bar
   TopBar.tsx          # logo, scope pill, MIX/TOP/NEW tabs, time range, mute
 lib/
-  recommend.ts        # seeded shuffle + weighted pool mixing
+  recommend.ts        # seeded shuffle + weighted pool mixing + favorites boost
   kick.ts             # got-scraping fetcher, types, in-memory cache
   format.ts           # compact numbers, durations, relative time
   likes.ts            # localStorage-backed likes
   watched.ts          # localStorage-backed watch history
+  affinity.ts         # localStorage-backed taste profile (categories/channels)
+  settings.ts         # localStorage-backed preferences (18+ filter)
 ```
 
 ## Contributing
@@ -116,6 +122,9 @@ Los streamers de Kick generan clips geniales todos los días, pero no hay un lug
 - 📱 **Feed vertical a pantalla completa** — scroll con snap, autoplay, un clip a la vez
 - 🎲 **Modo MIX (por defecto)** — un feed de recomendaciones mezclado, distinto en cada refresco
 - 🧠 **Historial de vistos** — MIX recuerda lo que ya viste (localmente) y lo salta
+- 💚 **MIX personalizado** — tus likes e historial (guardados localmente) adelantan en el mazo los clips de tus categorías y canales favoritos
+- ⏩ **Seek y avance automático** — arrastra la barra de progreso para adelantar, y el feed pasa solo al siguiente clip cuando uno termina
+- 🔞 **Filtro 18+** — un toque en la barra superior oculta los clips marcados como contenido maduro
 - 🎯 **Feeds por canal y categoría** — toca el nombre/avatar de un streamer (`/c/[slug]`) o el chip de categoría (`/g/[slug]`) para ver solo eso
 - 🔥 **Filtros de tendencias** — los clips más vistos de las últimas 24h / 7d / 30d / siempre, o los más nuevos
 - ♾️ **Scroll infinito** — paginación por cursor directa del feed de clips de Kick
@@ -134,6 +143,7 @@ La API de Kick solo ofrece ordenamientos deterministas (`view`/`date`), así que
 2. Cada solicitud recibe una **semilla** aleatoria. Un PRNG con semilla (mulberry32) mezcla cada fuente de forma determinista.
 3. El mazo se reparte por **round-robin ponderado** entre fuentes — 40% éxitos de hoy, 25% semanales, 15% mensuales, 20% recién subidos — eliminando duplicados.
 4. La paginación reutiliza la misma semilla, así el scroll es estable dentro de una sesión; refrescar genera una semilla nueva y un feed nuevo. Cuando el mazo se agota, el cliente vuelve a mezclar con otra semilla y sigue, saltando los clips ya vistos.
+5. Si ya diste likes o viste clips, el navegador envía tus categorías y canales favoritos (calculados localmente, nunca guardados en el servidor) junto con la semilla, y los clips que coinciden se promueven de forma determinista dentro del mazo.
 
 ## Cómo llega a Kick
 

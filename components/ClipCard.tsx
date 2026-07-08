@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import Hls from "hls.js";
 import type { KickClip } from "@/lib/kick";
+import { recordAffinity } from "@/lib/affinity";
 import { formatCount, formatDuration, timeAgo } from "@/lib/format";
 import { isLiked, setLiked as persistLiked, subscribeLikes } from "@/lib/likes";
 import {
@@ -27,6 +28,9 @@ interface ClipCardProps {
   volume: number;
   onToggleMute: () => void;
   onVolumeChange: (volume: number) => void;
+  // Returns true when the feed advanced to the next clip; false means this
+  // was the last card, so the clip replays in place instead.
+  onEnded: () => boolean;
 }
 
 interface Burst {
@@ -44,11 +48,14 @@ export default function ClipCard({
   volume,
   onToggleMute,
   onVolumeChange,
+  onEnded,
 }: ClipCardProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
   const progressRef = useRef<HTMLDivElement>(null);
+  const seekAreaRef = useRef<HTMLDivElement>(null);
   const clickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const seekingRef = useRef(false);
 
   const liked = useSyncExternalStore(
     subscribeLikes,
@@ -61,6 +68,7 @@ export default function ClipCard({
   const [flash, setFlash] = useState<{ kind: "play" | "pause"; key: number } | null>(null);
   const [bursts, setBursts] = useState<Burst[]>([]);
   const [toast, setToast] = useState<string | null>(null);
+  const [scrubbing, setScrubbing] = useState(false);
 
   const shouldLoad = active || preload;
   const clipUrl = `https://kick.com/${clip.channel.slug}/clips/${clip.id}`;
@@ -151,6 +159,7 @@ export default function ClipCard({
   }
 
   function like(at?: { x: number; y: number }) {
+    if (!liked) recordAffinity(clip, 3);
     persistLiked(clip.id, true);
     if (at) {
       const burst = { key: Date.now(), ...at };
@@ -163,6 +172,7 @@ export default function ClipCard({
   }
 
   function toggleLike() {
+    if (!liked) recordAffinity(clip, 3);
     persistLiked(clip.id, !liked);
   }
 
@@ -182,11 +192,54 @@ export default function ClipCard({
     }
   }
 
+  // The bar and its aria value update imperatively to avoid re-rendering
+  // the card several times per second.
+  function paintProgress(frac: number) {
+    if (progressRef.current) {
+      progressRef.current.style.width = `${frac * 100}%`;
+    }
+    seekAreaRef.current?.setAttribute("aria-valuenow", String(Math.round(frac * 100)));
+  }
+
   function handleTimeUpdate() {
+    if (seekingRef.current) return;
     const video = videoRef.current;
-    const bar = progressRef.current;
-    if (!video || !bar || !video.duration) return;
-    bar.style.width = `${(video.currentTime / video.duration) * 100}%`;
+    if (!video || !video.duration) return;
+    paintProgress(video.currentTime / video.duration);
+  }
+
+  function handleEnded() {
+    if (onEnded()) return;
+    const video = videoRef.current;
+    if (video && active) {
+      video.currentTime = 0;
+      video.play().catch(() => {});
+    }
+  }
+
+  function seekTo(e: React.PointerEvent<HTMLDivElement>) {
+    const video = videoRef.current;
+    if (!video || !video.duration) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const frac = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
+    video.currentTime = frac * video.duration;
+    paintProgress(frac);
+  }
+
+  function handleSeekDown(e: React.PointerEvent<HTMLDivElement>) {
+    e.currentTarget.setPointerCapture(e.pointerId);
+    seekingRef.current = true;
+    setScrubbing(true);
+    seekTo(e);
+  }
+
+  function handleSeekMove(e: React.PointerEvent<HTMLDivElement>) {
+    if (seekingRef.current) seekTo(e);
+  }
+
+  function handleSeekUp() {
+    seekingRef.current = false;
+    setScrubbing(false);
   }
 
   async function share() {
@@ -231,10 +284,10 @@ export default function ClipCard({
           ref={videoRef}
           poster={clip.thumbnail_url}
           playsInline
-          loop
           muted
           preload="metadata"
           onTimeUpdate={handleTimeUpdate}
+          onEnded={handleEnded}
           className="h-full w-full object-contain"
         />
 
@@ -426,13 +479,32 @@ export default function ClipCard({
         </div>
       )}
 
-      {/* Playback progress */}
-      <div className="absolute inset-x-0 bottom-0 z-10 h-0.5 bg-white/10">
+      {/* Playback progress — the thin bar sits inside a taller hit area so
+          it stays draggable on touch screens without cluttering the UI. */}
+      <div
+        ref={seekAreaRef}
+        className="absolute inset-x-0 bottom-0 z-20 flex h-6 cursor-pointer touch-none flex-col justify-end"
+        onPointerDown={handleSeekDown}
+        onPointerMove={handleSeekMove}
+        onPointerUp={handleSeekUp}
+        onPointerCancel={handleSeekUp}
+        role="slider"
+        aria-label="Seek"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={0}
+      >
         <div
-          ref={progressRef}
-          className="h-full bg-kick shadow-[0_0_8px_rgba(83,252,24,0.8)]"
-          style={{ width: "0%" }}
-        />
+          className={`w-full bg-white/10 transition-[height] duration-150 ${
+            scrubbing ? "h-1.5" : "h-0.5"
+          }`}
+        >
+          <div
+            ref={progressRef}
+            className="h-full bg-kick shadow-[0_0_8px_rgba(83,252,24,0.8)]"
+            style={{ width: "0%" }}
+          />
+        </div>
       </div>
     </section>
   );

@@ -47,11 +47,13 @@ components/
   TopBar.tsx            logo, scope pill, tab switcher, time range, mute toggle
   icons.tsx             inline SVG icon helpers
 lib/
-  recommend.ts          seeded shuffle + weighted pool mixing
+  recommend.ts          seeded shuffle + weighted pool mixing + favorites boost
   kick.ts               got-scraping fetcher, Kick types, 60 s memory cache
   format.ts             compact numbers, durations, relative time
   likes.ts              localStorage likes
   watched.ts            localStorage watch history
+  affinity.ts           localStorage taste profile (category/channel scores)
+  settings.ts           localStorage preferences (18+ filter)
 ```
 
 ## Conventions

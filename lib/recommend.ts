@@ -106,11 +106,38 @@ async function buildDeck(seed: string): Promise<KickClip[]> {
   return deck;
 }
 
+// Taste-based promotion: clips matching the client's favorite channels or
+// categories keep their deck position but with a shrunken sort key, so they
+// surface earlier without displacing variety. Purely a function of the deck
+// and the favorites, so pagination stays deterministic within a session.
+function promoteFavorites(
+  deck: KickClip[],
+  favCategories: string[],
+  favChannels: string[],
+): KickClip[] {
+  if (favCategories.length === 0 && favChannels.length === 0) return deck;
+  const cats = new Set(favCategories);
+  const chans = new Set(favChannels);
+  return deck
+    .map((clip, i) => {
+      const factor = chans.has(clip.channel.slug)
+        ? 0.55
+        : cats.has(clip.category.slug)
+          ? 0.7
+          : 1;
+      return { clip, score: i * factor };
+    })
+    .sort((a, b) => a.score - b.score)
+    .map((entry) => entry.clip);
+}
+
 export async function getMixedFeed(
   seed: string,
   page: number,
+  favCategories: string[] = [],
+  favChannels: string[] = [],
 ): Promise<ClipsPage> {
-  const deck = await buildDeck(seed);
+  const deck = promoteFavorites(await buildDeck(seed), favCategories, favChannels);
   const start = page * PAGE_SIZE;
   const clips = deck.slice(start, start + PAGE_SIZE);
   const hasMore = start + PAGE_SIZE < deck.length;

@@ -1,7 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getMixedFeed } from "@/lib/recommend";
+import { SLUG_RE } from "@/lib/kick";
 
 export const dynamic = "force-dynamic";
+
+// Favorite slugs arrive as CSV; anything malformed is dropped rather than
+// rejected so a corrupt localStorage profile can't break the feed.
+function parseSlugs(csv: string | null): string[] {
+  if (!csv) return [];
+  return csv
+    .split(",")
+    .filter((s) => SLUG_RE.test(s))
+    .slice(0, 5);
+}
 
 export async function GET(req: NextRequest) {
   const params = req.nextUrl.searchParams;
@@ -15,8 +26,11 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Invalid page" }, { status: 400 });
   }
 
+  const favCategories = parseSlugs(params.get("fc"));
+  const favChannels = parseSlugs(params.get("fh"));
+
   try {
-    const feed = await getMixedFeed(seed, page);
+    const feed = await getMixedFeed(seed, page, favCategories, favChannels);
     return NextResponse.json(feed, {
       headers: { "Cache-Control": "no-store" },
     });
